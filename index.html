@@ -31,7 +31,7 @@
       }
     }
   </script>
-  <!-- Phosphor Icons for Crisp UI Icons -->
+  <!-- Phosphor Icons -->
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
   <style>
     .btn-tap {
@@ -58,10 +58,11 @@
   <!-- Main Container -->
   <div class="w-full max-w-md flex flex-col h-full min-h-[92vh] justify-between pb-4">
 
-    <!-- Top Header -->
+    <!-- Top Header (No text, only icon and status) -->
     <header class="flex items-center justify-between py-2 px-1 mb-2">
       <div class="flex items-center gap-2">
-        <div class="w-9 h-9 rounded-xl bg-jpRed/10 text-jpRed flex items-center justify-center text-xl font-bold shadow-sm border border-jpRed/20">
+        <!-- Pure Calculator Icon without title text -->
+        <div class="w-10 h-10 rounded-xl bg-jpRed text-white flex items-center justify-center text-2xl font-bold shadow-md shadow-jpRed/25 border border-jpRed/30">
           <i class="ph ph-calculator"></i>
         </div>
         <div>
@@ -110,7 +111,7 @@
         </div>
 
         <!-- Formula Expression / Standard Memory Tag -->
-        <div class="flex items-center gap-1.5 overflow-hidden text-right max-w-[50%]">
+        <div class="flex items-center gap-1.5 overflow-hidden text-right max-w-[55%]">
           <span id="memoryIndicator" class="hidden text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-500 font-bold">M</span>
           <div id="calcExpression" class="text-xs text-slate-400 font-mono truncate select-none">0</div>
         </div>
@@ -403,7 +404,7 @@
     </div>
   </div>
 
-  <!-- Drawer: Expense & Calculation History -->
+  <!-- Drawer: Expense & Calculation History (With CSV Export) -->
   <div id="historyDrawer" class="fixed inset-y-0 right-0 w-full max-w-sm bg-jpLightCard dark:bg-jpDarkCard shadow-2xl z-50 transform translate-x-full transition-transform duration-300 flex flex-col p-4 border-l border-slate-200 dark:border-slate-800">
     <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
       <div class="flex items-center gap-2">
@@ -442,7 +443,7 @@
     const STORAGE_KEY_THEME = 'jptravel_calc_theme';
     const STORAGE_KEY_MEMORY = 'jptravel_calc_mem';
     const STORAGE_KEY_HISTORY = 'jptravel_calc_history';
-    const STORAGE_KEY_CALC_RECENTS = 'jptravel_calc_recents'; // Top-right 10 expression logs
+    const STORAGE_KEY_CALC_RECENTS = 'jptravel_calc_recents';
 
     // Baseline offline default rates
     const DEFAULT_RATES = {
@@ -456,12 +457,11 @@
       baseCurrency: 'JPY',
       currentInput: '0',
       formula: '',
-      calculatedValue: 0,
       memoryValue: 0,
       isNewNumber: true,
       selectedCategory: '藥妝',
       history: [],
-      calcRecents: [] // Max 10 recent calculations
+      calcRecents: []
     };
 
     let deferredPrompt = null;
@@ -500,7 +500,6 @@
       recalculateAllCurrencies();
     }
 
-    // Fetch live rates from public free endpoint
     async function fetchLiveRates() {
       const icon = document.getElementById('refreshIcon');
       if (icon) icon.classList.add('animate-spin');
@@ -529,14 +528,13 @@
           throw new Error('匯率格式異常');
         }
       } catch (err) {
-        console.warn('匯率更新失敗，使用快取或離線預設:', err);
         showToast('目前為離線狀態，已使用保存匯率');
       } finally {
         if (icon) icon.classList.remove('animate-spin');
       }
     }
 
-    /* --- Calculation Engine & Top-Right 10 Recents --- */
+    /* --- Precise Two-Pass Math Evaluation Engine (MDAS Order of Operations) --- */
     function sanitizeExpression(expr) {
       if (!expr) return '';
       return expr
@@ -547,22 +545,18 @@
         .trim();
     }
 
-    // Robust, pure tokenizer & math evaluator without unsafe syntax errors
     function evaluateMath(expression) {
       try {
         let clean = sanitizeExpression(expression);
         if (!clean) return 0;
 
-        // Remove trailing operator if user just pressed '=' without second operand
+        // Strip trailing uncompleted operator if any
         clean = clean.replace(/[\+\-\*\/%]+$/, '').trim();
         if (!clean) return 0;
 
-        // Tokenize numbers and operators
-        // Supports integers, floats, percent (e.g. 50%), and +, -, *, /
         const tokens = clean.match(/(\d+\.?\d*%?|[\+\-\*\/])/g);
         if (!tokens || tokens.length === 0) return null;
 
-        // Convert percent numbers to numeric values, e.g. 10% -> 0.1
         const parsed = [];
         for (let i = 0; i < tokens.length; i++) {
           const t = tokens[i];
@@ -579,7 +573,7 @@
           }
         }
 
-        // Pass 1: Resolve high-precedence operators (* and /)
+        // Pass 1: Multiply and Divide (Higher precedence)
         const pass1 = [];
         let i = 0;
         while (i < parsed.length) {
@@ -591,7 +585,7 @@
             if (token === '*') {
               pass1.push(prev * next);
             } else {
-              if (next === 0) return null; // Avoid division by zero
+              if (next === 0) return null;
               pass1.push(prev / next);
             }
           } else {
@@ -600,7 +594,7 @@
           i++;
         }
 
-        // Pass 2: Resolve low-precedence operators (+ and -)
+        // Pass 2: Add and Subtract (Lower precedence)
         if (pass1.length === 0) return 0;
         let result = typeof pass1[0] === 'number' ? pass1[0] : 0;
         let j = (typeof pass1[0] === 'number') ? 1 : 0;
@@ -621,11 +615,11 @@
         if (isNaN(result) || !isFinite(result)) return null;
         return result;
       } catch (e) {
-        console.error('Calculation evaluation error:', e);
         return null;
       }
     }
 
+    /* --- Keypad & Input Handling --- */
     function inputNumber(num) {
       if (state.isNewNumber) {
         state.currentInput = (num === '00') ? '0' : num;
@@ -654,13 +648,12 @@
 
     function inputOperator(op) {
       if (state.formula) {
-        // 如果前一個步驟也是運算符，且尚未輸入新數字，則直接替換運算符
         if (state.isNewNumber) {
+          // Replace last operator if user tapped another operator consecutively
           state.formula = state.formula.trim().replace(/[\+\-\×\÷%]+$/, '').trim() + ` ${op}`;
         } else {
-          // 連續運算先算出中間值
-          calculateIntermediate();
-          state.formula = `${state.currentInput} ${op}`;
+          // Chain formula WITHOUT premature left-to-right evaluation
+          state.formula = `${state.formula} ${state.currentInput} ${op}`;
         }
       } else {
         state.formula = `${state.currentInput} ${op}`;
@@ -692,17 +685,7 @@
       updateDisplay();
     }
 
-    function calculateIntermediate() {
-      if (!state.formula) return;
-      const fullExpr = `${state.formula} ${state.currentInput}`;
-      const result = evaluateMath(fullExpr);
-      if (result !== null) {
-        state.currentInput = String(roundSmart(result));
-      }
-    }
-
     function calculateResult() {
-      // 若沒有算式，直接維持當前數值
       if (!state.formula) return;
 
       const fullExpr = `${state.formula} ${state.currentInput}`;
@@ -715,7 +698,7 @@
         const exprEl = document.getElementById('calcExpression');
         if (exprEl) exprEl.textContent = exprDisplay;
 
-        // 加入歷史算式記憶 (最多10筆)
+        // Save to 10-item memory history
         addCalcRecentRecord(fullExpr, resStr, state.baseCurrency);
 
         state.currentInput = resStr;
@@ -731,7 +714,7 @@
       return Math.round(val * 10000) / 10000;
     }
 
-    /* --- STREAMING_CHUNK:Implementing 10-Memory history logic... --- */
+    /* --- 10 Recent Calculation Memory History --- */
     function initCalcRecents() {
       try {
         const saved = localStorage.getItem(STORAGE_KEY_CALC_RECENTS);
@@ -756,10 +739,8 @@
         time: timeStr
       };
 
-      // Unshift to put latest record on top
       state.calcRecents.unshift(newRecord);
 
-      // Keep maximum 10 records, remove oldest when exceeded
       if (state.calcRecents.length > 10) {
         state.calcRecents = state.calcRecents.slice(0, 10);
       }
@@ -852,7 +833,7 @@
       showToast('已清空歷史算式記錄');
     }
 
-    /* --- Travel Shopping Quick Shortcuts --- */
+    /* --- Japan Shopping Shortcuts --- */
     function applyTax(factor) {
       let current = parseFloat(state.currentInput) || 0;
       let newAmount = roundSmart(current * factor);
@@ -877,7 +858,7 @@
       updateDisplay();
     }
 
-    /* --- Multi-Currency Live Converter Core --- */
+    /* --- Currency Conversion Calculations --- */
     function recalculateAllCurrencies() {
       const num = parseFloat(state.currentInput) || 0;
       let jpy = 0, twd = 0, usd = 0;
@@ -916,7 +897,7 @@
       recalculateAllCurrencies();
     }
 
-    /* --- STREAMING_CHUNK:Implementing memory functions and bookkeeping history... --- */
+    /* --- Standard Memory Keys (MC, MR, M+, M-) --- */
     function initMemory() {
       try {
         const mem = localStorage.getItem(STORAGE_KEY_MEMORY);
@@ -971,7 +952,7 @@
       state.isNewNumber = true;
     }
 
-    // Expense Recording System
+    /* --- Bookkeeping & CSV Export --- */
     function toggleRecordModal() {
       const modal = document.getElementById('recordModal');
       if (modal.classList.contains('hidden')) {
@@ -1129,14 +1110,12 @@
         return;
       }
 
-      // CSV Header
-      let csvContent = '\uFEFF'; // UTF-8 BOM to prevent garbled text in Excel
+      let csvContent = '\uFEFF';
       csvContent += '編號,時間,分類,項目說明,日幣金額(JPY),台幣金額(TWD)\n';
 
       let totalJpy = 0;
       let totalTwd = 0;
 
-      // Reverse so oldest is first or keep chronological order
       state.history.forEach((item, index) => {
         totalJpy += item.jpy;
         totalTwd += item.twd;
@@ -1144,7 +1123,6 @@
         csvContent += `${index + 1},"${item.time || ''}","${item.category || ''}","${cleanNote}",${item.jpy},${item.twd}\n`;
       });
 
-      // Total row
       csvContent += `總計,-,-,-,${totalJpy},${totalTwd}\n`;
 
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -1165,7 +1143,7 @@
       drawer.classList.toggle('translate-x-full');
     }
 
-    /* --- Utilities & PWA Setup --- */
+    /* --- Utilities & PWA --- */
     function copyValue(type) {
       let val = '';
       if (type === 'JPY') val = document.getElementById('valJPY').textContent;
@@ -1205,7 +1183,6 @@
         tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag));
     }
 
-    /* --- PWA Mobile Desktop Installation --- */
     function initPWA() {
       const manifest = {
         name: "日本旅遊萬用計算機",
@@ -1235,13 +1212,9 @@
 
       if ('serviceWorker' in navigator) {
         const swCode = `
-          const CACHE_NAME = 'jptravel-calc-v3';
-          self.addEventListener('install', (e) => {
-            self.skipWaiting();
-          });
-          self.addEventListener('activate', (e) => {
-            e.waitUntil(clients.claim());
-          });
+          const CACHE_NAME = 'jptravel-calc-v4';
+          self.addEventListener('install', (e) => self.skipWaiting());
+          self.addEventListener('activate', (e) => e.waitUntil(clients.claim()));
           self.addEventListener('fetch', (e) => {
             e.respondWith(
               fetch(e.request).catch(() => caches.match(e.request))
@@ -1305,7 +1278,6 @@
       showToast('已重設為預設匯率');
     }
 
-    // Theme Management
     function initTheme() {
       const savedTheme = localStorage.getItem(STORAGE_KEY_THEME);
       const isDark = savedTheme ? savedTheme === 'dark' : true;
@@ -1316,7 +1288,7 @@
       }
     }
 
-    /* --- STREAMING_CHUNK:Attaching event listeners on load... --- */
+    /* --- DOM Loaded Event Listeners --- */
     window.addEventListener('DOMContentLoaded', () => {
       initTheme();
       initRates();
@@ -1326,13 +1298,11 @@
       updateDisplay();
       initPWA();
 
-      // Theme button
       document.getElementById('themeToggleBtn').addEventListener('click', () => {
         const isDark = document.documentElement.classList.toggle('dark');
         localStorage.setItem(STORAGE_KEY_THEME, isDark ? 'dark' : 'light');
       });
 
-      // Currency Base Tabs
       document.querySelectorAll('.currency-tab').forEach(tab => {
         tab.addEventListener('click', (e) => {
           document.querySelectorAll('.currency-tab').forEach(t => {
@@ -1350,13 +1320,11 @@
         });
       });
 
-      // Rate Buttons
       document.getElementById('refreshRateBtn').addEventListener('click', fetchLiveRates);
       document.getElementById('editRateBtn').addEventListener('click', () => {
         document.getElementById('rateModal').classList.remove('hidden');
       });
 
-      // Network Status Monitor
       window.addEventListener('online', () => {
         const badge = document.getElementById('offlineBadge');
         if (badge) {
@@ -1373,7 +1341,6 @@
       });
     });
 
-    // Keyboard support for desktop
     window.addEventListener('keydown', (e) => {
       if (e.target.tagName === 'INPUT') return;
       if (e.key >= '0' && e.key <= '9') inputNumber(e.key);

@@ -1,0 +1,1347 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>日本旅遊萬用計算機</title>
+  <!-- PWA & Mobile Meta Tags -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="日旅計算機">
+  <meta name="theme-color" content="#12161A">
+  <link rel="manifest" id="pwaManifest">
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            jpRed: '#E63946',
+            jpDarkBg: '#12161A',
+            jpDarkCard: '#1A2129',
+            jpLightBg: '#F3F4F6',
+            jpLightCard: '#FFFFFF',
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Phosphor Icons for Crisp UI Icons -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <style>
+    .btn-tap {
+      transition: all 0.08s ease;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    .btn-tap:active {
+      transform: scale(0.94);
+      filter: brightness(0.9);
+    }
+    .custom-scroll::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: rgba(156, 163, 175, 0.4);
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="bg-jpLightBg dark:bg-jpDarkBg text-slate-800 dark:text-slate-100 min-h-screen transition-colors duration-200 font-sans flex flex-col items-center justify-start p-2 sm:p-4">
+
+  <!-- Main Container -->
+  <div class="w-full max-w-md flex flex-col h-full min-h-[92vh] justify-between pb-4">
+
+    <!-- Top Header -->
+    <header class="flex items-center justify-between py-2 px-1 mb-2">
+      <div class="flex items-center gap-2">
+        <span class="text-2xl">🗾</span>
+        <div>
+          <h1 class="font-bold text-lg leading-tight tracking-wide flex items-center gap-1.5">
+            日旅萬用計算機
+            <span id="offlineBadge" class="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 font-medium border border-emerald-500/20">離線可用</span>
+          </h1>
+          <p id="rateUpdateTime" class="text-[11px] text-slate-400 dark:text-slate-500">匯率讀取中...</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-1.5">
+        <!-- Quick 10 Records Calculation Memory History Trigger -->
+        <button id="calcHistoryBtn" onclick="toggleCalcHistoryModal()" title="歷史算式記憶 (最多10筆)" class="btn-tap relative p-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-jpRed dark:hover:text-jpRed transition-colors">
+          <i class="ph ph-clock-counter-clockwise text-lg"></i>
+          <span id="calcHistoryBadge" class="absolute -top-1 -right-1 hidden w-4 h-4 rounded-full bg-jpRed text-white text-[9px] font-bold items-center justify-center">0</span>
+        </button>
+        <!-- Rate Refresh Button -->
+        <button id="refreshRateBtn" title="更新即時匯率" class="btn-tap p-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-jpRed dark:hover:text-jpRed transition-colors">
+          <i class="ph ph-arrows-clockwise text-lg" id="refreshIcon"></i>
+        </button>
+        <!-- Custom Rate Settings Modal Trigger -->
+        <button id="editRateBtn" title="自訂匯率" class="btn-tap p-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+          <i class="ph ph-gear text-lg"></i>
+        </button>
+        <!-- Theme Toggle -->
+        <button id="themeToggleBtn" title="切換明暗模式" class="btn-tap p-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-amber-500 dark:text-yellow-400">
+          <i class="ph ph-moon text-lg dark:hidden"></i>
+          <i class="ph ph-sun text-lg hidden dark:inline"></i>
+        </button>
+        <!-- Mobile Desktop Install Guide / Button -->
+        <button id="installAppBtn" onclick="openInstallGuideModal()" title="安裝到手機桌面" class="btn-tap p-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-jpRed dark:text-rose-400">
+          <i class="ph ph-download-simple text-lg"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Currency Result Card Box -->
+    <div class="bg-jpLightCard dark:bg-jpDarkCard rounded-2xl p-4 shadow-sm border border-slate-200/80 dark:border-slate-800/80 mb-3 flex flex-col gap-2.5">
+      
+      <!-- Base Currency Tabs / Formula Row -->
+      <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-2">
+        <div class="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs font-semibold">
+          <button class="currency-tab px-2.5 py-1 rounded-lg transition-all text-white bg-jpRed shadow-sm" data-currency="JPY">JPY ¥</button>
+          <button class="currency-tab px-2.5 py-1 rounded-lg transition-all text-slate-500 dark:text-slate-400 hover:text-slate-900" data-currency="TWD">TWD NT$</button>
+          <button class="currency-tab px-2.5 py-1 rounded-lg transition-all text-slate-500 dark:text-slate-400 hover:text-slate-900" data-currency="USD">USD $</button>
+        </div>
+
+        <!-- Formula Expression / Standard Memory Tag -->
+        <div class="flex items-center gap-1.5 overflow-hidden text-right max-w-[50%]">
+          <span id="memoryIndicator" class="hidden text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-500 font-bold">M</span>
+          <div id="calcExpression" class="text-xs text-slate-400 font-mono truncate select-none">0</div>
+        </div>
+      </div>
+
+      <!-- Main Input Display (Active Currency) -->
+      <div class="flex items-baseline justify-between pt-1">
+        <span id="activeCurrencySymbol" class="text-xl font-bold text-jpRed">¥</span>
+        <div class="flex-1 text-right overflow-x-auto custom-scroll">
+          <span id="mainDisplay" class="text-3xl sm:text-4xl font-extrabold tracking-tight font-mono text-slate-900 dark:text-white select-all">0</span>
+        </div>
+      </div>
+
+      <!-- Live Converted Result Rows (JPY, TWD, USD simultaneously) -->
+      <div class="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/80 text-center">
+        <!-- JPY -->
+        <div class="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex flex-col cursor-pointer active:opacity-75" onclick="copyValue('JPY')">
+          <div class="flex items-center justify-center gap-1 text-[11px] text-slate-400 font-semibold">
+            <span>🇯🇵 日幣 JPY</span>
+          </div>
+          <span id="valJPY" class="text-base sm:text-lg font-bold font-mono text-slate-800 dark:text-slate-200 mt-0.5 truncate">¥ 0</span>
+        </div>
+
+        <!-- TWD -->
+        <div class="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex flex-col cursor-pointer active:opacity-75" onclick="copyValue('TWD')">
+          <div class="flex items-center justify-center gap-1 text-[11px] text-slate-400 font-semibold">
+            <span>🇹🇼 台幣 TWD</span>
+          </div>
+          <span id="valTWD" class="text-base sm:text-lg font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-0.5 truncate">NT$ 0</span>
+        </div>
+
+        <!-- USD -->
+        <div class="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex flex-col cursor-pointer active:opacity-75" onclick="copyValue('USD')">
+          <div class="flex items-center justify-center gap-1 text-[11px] text-slate-400 font-semibold">
+            <span>🇺🇸 美金 USD</span>
+          </div>
+          <span id="valUSD" class="text-base sm:text-lg font-bold font-mono text-blue-600 dark:text-blue-400 mt-0.5 truncate">$ 0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Japan Shopping & Tax Shortcut Bar -->
+    <div class="grid grid-cols-4 gap-1.5 mb-3">
+      <button onclick="applyTax(1.10)" class="btn-tap py-2 px-1 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/50 dark:border-amber-900/50 text-xs font-semibold flex flex-col items-center">
+        <span>+10% 含稅</span>
+        <span class="text-[9px] text-amber-500 font-normal">日本標準稅</span>
+      </button>
+      <button onclick="applyTax(0.9090909)" class="btn-tap py-2 px-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-900/50 text-xs font-semibold flex flex-col items-center">
+        <span>-10% 免稅</span>
+        <span class="text-[9px] text-emerald-500 font-normal">滿額退稅價</span>
+      </button>
+      <button onclick="applyDiscount(0.95)" class="btn-tap py-2 px-1 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200/50 dark:border-rose-900/50 text-xs font-semibold flex flex-col items-center">
+        <span>95 折</span>
+        <span class="text-[9px] text-rose-500 font-normal">常見優惠券</span>
+      </button>
+      <button onclick="applyDiscount(0.90)" class="btn-tap py-2 px-1 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200/50 dark:border-indigo-900/50 text-xs font-semibold flex flex-col items-center">
+        <span>9 折</span>
+        <span class="text-[9px] text-indigo-500 font-normal">特惠券折扣</span>
+      </button>
+    </div>
+
+    <!-- Calculator Keypad Container -->
+    <div class="bg-jpLightCard dark:bg-jpDarkCard rounded-2xl p-3 shadow-sm border border-slate-200/80 dark:border-slate-800/80 flex flex-col gap-2">
+      
+      <!-- Memory & Expense Record Function Row -->
+      <div class="grid grid-cols-5 gap-1.5 text-xs font-bold">
+        <button onclick="memClear()" class="btn-tap py-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300">MC</button>
+        <button onclick="memRecall()" class="btn-tap py-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300">MR</button>
+        <button onclick="memAdd()" class="btn-tap py-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-amber-600 dark:text-amber-400">M+</button>
+        <button onclick="memSubtract()" class="btn-tap py-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-amber-600 dark:text-amber-400">M-</button>
+        <button onclick="toggleRecordModal()" class="btn-tap py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center gap-1" title="記錄此筆開銷">
+          <i class="ph ph-receipt text-sm"></i>
+          <span>記帳</span>
+        </button>
+      </div>
+
+      <!-- Numeric & Operators Grid -->
+      <div class="grid grid-cols-4 gap-1.5 font-bold text-lg select-none">
+        <!-- Row 1 -->
+        <button onclick="clearAll()" class="btn-tap py-3 rounded-xl bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-300">AC</button>
+        <button onclick="deleteDigit()" class="btn-tap py-3 rounded-xl bg-slate-100 dark:bg-slate-800/70 text-slate-700 dark:text-slate-300">
+          <i class="ph ph-backspace text-xl"></i>
+        </button>
+        <button onclick="inputOperator('%')" class="btn-tap py-3 rounded-xl bg-slate-100 dark:bg-slate-800/70 text-slate-700 dark:text-slate-300">%</button>
+        <button onclick="inputOperator('÷')" class="btn-tap py-3 rounded-xl bg-orange-100 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400">÷</button>
+
+        <!-- Row 2 -->
+        <button onclick="inputNumber('7')" class="btn-tap py-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800">7</button>
+        <button onclick="inputNumber('8')" class="btn-tap py-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800">8</button>
+        <button onclick="inputNumber('9')" class="btn-tap py-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800">9</button>
+        <button onclick="inputOperator('×')" class="btn-tap py-3.5 rounded-xl bg-orange-100 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400">×</button>
+
+        <!-- Row 3 -->
+        <button onclick="inputNumber('4')" class="btn-tap py-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800">4</button>
+        <button onclick="inputNumber('5')" class="btn-tap py-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800">5</button>
+        <button onclick="inputNumber('6')" class="btn-tap py-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800">6</button>
+        <button onclick="inputOperator('-')" class="btn-tap py-3.5 rounded-xl bg-orange-100 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400">−</button>
+
+        <!-- Row 4 -->
+        <button onclick="inputNumber('1')" class="btn-tap py-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800">1</button>
+        <button onclick="inputNumber('2')" class="btn-tap py-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800">2</button>
+        <button onclick="inputNumber('3')" class="btn-tap py-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800">3</button>
+        <button onclick="inputOperator('+')" class="btn-tap py-3.5 rounded-xl bg-orange-100 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400">+</button>
+
+        <!-- Row 5 -->
+        <button onclick="inputNumber('0')" class="btn-tap py-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800">0</button>
+        <button onclick="inputNumber('00')" class="btn-tap py-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800">00</button>
+        <button onclick="inputDecimal()" class="btn-tap py-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800">.</button>
+        <button onclick="calculateResult()" class="btn-tap py-3.5 rounded-xl bg-jpRed text-white shadow-md shadow-jpRed/20 hover:opacity-90">=</button>
+      </div>
+
+    </div>
+
+    <!-- Travel Expense History Bottom Drawer Toggle -->
+    <div class="mt-3 flex items-center justify-between text-xs px-2">
+      <div class="text-slate-400 dark:text-slate-500">
+        累積消費：<span id="totalSpentTWD" class="font-bold text-slate-700 dark:text-slate-300">NT$ 0</span>
+        (<span id="totalSpentJPY" class="font-mono">¥0</span>)
+      </div>
+      <button onclick="toggleHistoryDrawer()" class="flex items-center gap-1 font-semibold text-jpRed hover:underline">
+        <i class="ph ph-notebook"></i>
+        <span>消費清單 (<span id="historyCount">0</span>)</span>
+      </button>
+    </div>
+
+  </div>
+
+  <!-- Toast Notification Message Box -->
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 bg-slate-900/90 dark:bg-slate-100/90 text-white dark:text-slate-900 text-xs font-semibold rounded-full shadow-lg pointer-events-none opacity-0 transition-opacity duration-300 z-50 flex items-center gap-1.5">
+    <i class="ph ph-check-circle text-base"></i>
+    <span id="toastMsg">已複製到剪貼簿</span>
+  </div>
+
+  <!-- Modal: Recent 10 Calculations History Memory -->
+  <div id="calcHistoryModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-jpLightCard dark:bg-jpDarkCard rounded-2xl w-full max-w-sm p-4 border border-slate-200 dark:border-slate-800 shadow-xl flex flex-col max-h-[80vh]">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div class="flex items-center gap-2">
+          <i class="ph ph-clock-counter-clockwise text-jpRed text-lg"></i>
+          <div>
+            <h3 class="font-bold text-sm">歷史算式記憶</h3>
+            <p class="text-[10px] text-slate-400">保留最新 10 筆，點擊立即帶回免重打！</p>
+          </div>
+        </div>
+        <button onclick="toggleCalcHistoryModal()" class="text-slate-400 hover:text-slate-600">
+          <i class="ph ph-x text-lg"></i>
+        </button>
+      </div>
+
+      <!-- Calculation History List -->
+      <div id="calcHistoryItems" class="flex-1 overflow-y-auto custom-scroll py-3 space-y-2">
+        <!-- Populated via JS -->
+      </div>
+
+      <div class="pt-2 border-t border-slate-100 dark:border-slate-800 flex gap-2">
+        <button onclick="clearCalcHistory()" class="w-full py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium text-xs hover:text-rose-500">
+          清空歷史記錄
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Mobile Desktop Install (PWA) Guide -->
+  <div id="installGuideModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-jpLightCard dark:bg-jpDarkCard rounded-2xl w-full max-w-sm p-5 border border-slate-200 dark:border-slate-800 shadow-xl text-xs space-y-3">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+        <h3 class="font-bold text-sm flex items-center gap-1.5 text-slate-900 dark:text-white">
+          <i class="ph ph-device-mobile text-jpRed text-lg"></i>
+          安裝到手機主畫面 (離線/線上皆可)
+        </h3>
+        <button onclick="closeInstallGuideModal()" class="text-slate-400 hover:text-slate-600">
+          <i class="ph ph-x text-lg"></i>
+        </button>
+      </div>
+
+      <div class="space-y-2.5 text-slate-600 dark:text-slate-300 leading-relaxed">
+        <div class="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/60">
+          <p class="font-bold text-slate-800 dark:text-slate-100 mb-1 flex items-center gap-1">
+            <span>🍎 iOS (iPhone Safari 瀏覽器)</span>
+          </p>
+          <ol class="list-decimal list-inside space-y-1 text-[11px] text-slate-500 dark:text-slate-400">
+            <li>點擊 Safari 底部的分享按鈕「<i class="ph ph-export"></i>」</li>
+            <li>往下滑動並選擇「<span class="font-semibold text-slate-700 dark:text-slate-200">加入主畫面</span>」</li>
+            <li>點擊右上角「新增」，即可像手機 App 一樣秒開即用！</li>
+          </ol>
+        </div>
+
+        <div class="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/60">
+          <p class="font-bold text-slate-800 dark:text-slate-100 mb-1 flex items-center gap-1">
+            <span>🤖 Android (Chrome 瀏覽器)</span>
+          </p>
+          <ol class="list-decimal list-inside space-y-1 text-[11px] text-slate-500 dark:text-slate-400">
+            <li>點擊瀏覽器右上角選單「<i class="ph ph-dots-three-vertical"></i>」</li>
+            <li>點選「<span class="font-semibold text-slate-700 dark:text-slate-200">安裝應用程式</span>」或「加入主畫面」</li>
+          </ol>
+        </div>
+
+        <p class="text-[11px] text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 p-2 rounded-lg border border-emerald-500/20">
+          ✨ 安裝完成後，在日本飛機上、地鐵或無網路訊號時，都能離線點開快速換算！
+        </p>
+      </div>
+
+      <button id="pwaPromptBtn" onclick="triggerPwaPrompt()" class="w-full py-2.5 rounded-xl bg-jpRed text-white font-semibold text-xs shadow-md shadow-jpRed/20 hidden">
+        立即一鍵安裝到桌面
+      </button>
+      <button onclick="closeInstallGuideModal()" class="w-full py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs">
+        我知道了
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal: Custom Rate Settings -->
+  <div id="rateModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-jpLightCard dark:bg-jpDarkCard rounded-2xl w-full max-w-sm p-5 border border-slate-200 dark:border-slate-800 shadow-xl">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+        <h3 class="font-bold text-base flex items-center gap-2">
+          <i class="ph ph-sliders text-jpRed text-lg"></i>
+          匯率設定 (可自訂現金牌價)
+        </h3>
+        <button onclick="closeRateModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+          <i class="ph ph-x text-lg"></i>
+        </button>
+      </div>
+      
+      <div class="space-y-4 py-4 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-500 mb-1">1 日幣 (JPY) 兌換 台幣 (TWD)</label>
+          <div class="flex items-center gap-2">
+            <span class="text-sm font-mono text-slate-400">NT$</span>
+            <input type="number" step="0.0001" id="rateJpyTwdInput" class="w-full bg-slate-100 dark:bg-slate-800 px-3 py-2 rounded-xl text-sm font-mono border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-jpRed">
+          </div>
+          <span class="text-[10px] text-slate-400 mt-1 block">例：換匯時若為 0.215，輸入 0.215</span>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-500 mb-1">1 美金 (USD) 兌換 日幣 (JPY)</label>
+          <div class="flex items-center gap-2">
+            <span class="text-sm font-mono text-slate-400">¥</span>
+            <input type="number" step="0.01" id="rateUsdJpyInput" class="w-full bg-slate-100 dark:bg-slate-800 px-3 py-2 rounded-xl text-sm font-mono border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-jpRed">
+          </div>
+        </div>
+      </div>
+
+      <div class="flex gap-2 pt-2">
+        <button onclick="resetDefaultRates()" class="w-1/2 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold text-xs">重設為預設</button>
+        <button onclick="saveCustomRates()" class="w-1/2 py-2 rounded-xl bg-jpRed text-white font-semibold text-xs shadow-md shadow-jpRed/30">儲存匯率</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Expense Memo / Record Item -->
+  <div id="recordModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-jpLightCard dark:bg-jpDarkCard rounded-2xl w-full max-w-sm p-5 border border-slate-200 dark:border-slate-800 shadow-xl">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+        <h3 class="font-bold text-base flex items-center gap-1.5">
+          <i class="ph ph-bag-simple text-jpRed text-lg"></i>
+          記錄這筆旅遊消費
+        </h3>
+        <button onclick="toggleRecordModal()" class="text-slate-400 hover:text-slate-600">
+          <i class="ph ph-x text-lg"></i>
+        </button>
+      </div>
+
+      <div class="py-4 space-y-3 text-xs">
+        <div class="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl flex justify-between items-center">
+          <span class="text-slate-400">金額</span>
+          <div class="text-right">
+            <div id="modalRecordAmountJPY" class="text-base font-bold font-mono">¥0</div>
+            <div id="modalRecordAmountTWD" class="text-[11px] text-emerald-500 font-mono">NT$ 0</div>
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-500 mb-1">分類標籤</label>
+          <div class="grid grid-cols-4 gap-1.5" id="categoryTags">
+            <button type="button" onclick="selectCategory('藥妝')" class="cat-btn py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-jpRed text-white">💊 藥妝</button>
+            <button type="button" onclick="selectCategory('美食')" class="cat-btn py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">🍜 美食</button>
+            <button type="button" onclick="selectCategory('交通')" class="cat-btn py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">🚅 交通</button>
+            <button type="button" onclick="selectCategory('購物')" class="cat-btn py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">🛍️ 購物</button>
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-500 mb-1">備註說明 (選填)</label>
+          <input type="text" id="recordNoteInput" placeholder="例：唐吉訶德零食、晴空塔門票" class="w-full bg-slate-100 dark:bg-slate-800 px-3 py-2 rounded-xl text-xs border border-slate-200 dark:border-slate-700 focus:outline-none">
+        </div>
+      </div>
+
+      <button onclick="confirmSaveRecord()" class="w-full py-2.5 rounded-xl bg-jpRed text-white font-semibold text-xs shadow-md shadow-jpRed/20">儲存至消費清單</button>
+    </div>
+  </div>
+
+  <!-- Drawer: Expense & Calculation History -->
+  <div id="historyDrawer" class="fixed inset-y-0 right-0 w-full max-w-sm bg-jpLightCard dark:bg-jpDarkCard shadow-2xl z-50 transform translate-x-full transition-transform duration-300 flex flex-col p-4 border-l border-slate-200 dark:border-slate-800">
+    <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+      <div class="flex items-center gap-2">
+        <i class="ph ph-notebook text-jpRed text-lg"></i>
+        <h3 class="font-bold text-base">消費明細與記錄</h3>
+      </div>
+      <button onclick="toggleHistoryDrawer()" class="p-1 rounded-lg text-slate-400 hover:text-slate-600">
+        <i class="ph ph-x text-xl"></i>
+      </button>
+    </div>
+
+    <!-- History List -->
+    <div id="historyListContainer" class="flex-1 overflow-y-auto custom-scroll py-3 space-y-2">
+      <!-- Populated via JS -->
+    </div>
+
+    <!-- Drawer Footer Actions -->
+    <div class="pt-3 border-t border-slate-100 dark:border-slate-800 flex gap-2">
+      <button onclick="clearHistoryRecords()" class="w-1/2 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 text-xs font-semibold">清除所有記錄</button>
+      <button onclick="copyAllRecordsSummary()" class="w-1/2 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold flex items-center justify-center gap-1">
+        <i class="ph ph-copy"></i>
+        <span>複製文字總結</span>
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // Storage Keys
+    const STORAGE_KEY_RATES = 'jptravel_calc_rates';
+    const STORAGE_KEY_THEME = 'jptravel_calc_theme';
+    const STORAGE_KEY_MEMORY = 'jptravel_calc_mem';
+    const STORAGE_KEY_HISTORY = 'jptravel_calc_history';
+    const STORAGE_KEY_CALC_RECENTS = 'jptravel_calc_recents'; // Top-right 10 expression logs
+
+    // Baseline offline default rates
+    const DEFAULT_RATES = {
+      jpyToTwd: 0.214,
+      usdToJpy: 152.5,
+      lastUpdated: '離線快照 (預設)'
+    };
+
+    let state = {
+      rates: { ...DEFAULT_RATES },
+      baseCurrency: 'JPY',
+      currentInput: '0',
+      formula: '',
+      calculatedValue: 0,
+      memoryValue: 0,
+      isNewNumber: true,
+      selectedCategory: '藥妝',
+      history: [],
+      calcRecents: [] // Max 10 recent calculations
+    };
+
+    let deferredPrompt = null;
+
+    /* --- Rates & Initialization --- */
+    function initRates() {
+      try {
+        const cached = localStorage.getItem(STORAGE_KEY_RATES);
+        if (cached) {
+          state.rates = JSON.parse(cached);
+        } else {
+          saveRatesToStorage();
+        }
+      } catch (e) {
+        state.rates = { ...DEFAULT_RATES };
+      }
+      updateRateDisplayUI();
+    }
+
+    function saveRatesToStorage() {
+      try {
+        localStorage.setItem(STORAGE_KEY_RATES, JSON.stringify(state.rates));
+      } catch (e) {}
+      updateRateDisplayUI();
+    }
+
+    function updateRateDisplayUI() {
+      const updateEl = document.getElementById('rateUpdateTime');
+      if (updateEl) {
+        updateEl.textContent = `匯率: 1 JPY ≈ NT$${state.rates.jpyToTwd.toFixed(4)} (${state.rates.lastUpdated})`;
+      }
+      const jpyTwdInput = document.getElementById('rateJpyTwdInput');
+      const usdJpyInput = document.getElementById('rateUsdJpyInput');
+      if (jpyTwdInput) jpyTwdInput.value = state.rates.jpyToTwd;
+      if (usdJpyInput) usdJpyInput.value = state.rates.usdToJpy;
+      recalculateAllCurrencies();
+    }
+
+    // Fetch live rates from public free endpoint
+    async function fetchLiveRates() {
+      const icon = document.getElementById('refreshIcon');
+      if (icon) icon.classList.add('animate-spin');
+
+      try {
+        const response = await fetch('https://open.er-api.com/v6/latest/JPY', { cache: 'no-cache' });
+        if (!response.ok) throw new Error('網路錯誤');
+        const data = await response.json();
+        
+        if (data && data.rates && data.rates.TWD) {
+          const twdRate = data.rates.TWD;
+          const usdRate = data.rates.USD;
+          const usdToJpy = usdRate ? (1 / usdRate) : 152.0;
+
+          const now = new Date();
+          const timeStr = `${now.getMonth() + 1}/${now.getDate()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+          state.rates = {
+            jpyToTwd: parseFloat(twdRate.toFixed(4)),
+            usdToJpy: parseFloat(usdToJpy.toFixed(2)),
+            lastUpdated: `今日 ${timeStr}`
+          };
+          saveRatesToStorage();
+          showToast('匯率已成功更新為今日最新！');
+        } else {
+          throw new Error('匯率格式異常');
+        }
+      } catch (err) {
+        console.warn('匯率更新失敗，使用快取或離線預設:', err);
+        showToast('目前為離線狀態，已使用保存匯率');
+      } finally {
+        if (icon) icon.classList.remove('animate-spin');
+      }
+    }
+
+    /* --- Calculation Engine & Top-Right 10 Recents --- */
+    function sanitizeExpression(expr) {
+      if (!expr) return '';
+      return expr
+        .replace(/×/g, '*')
+        .replace(/÷/g, '/')
+        .replace(/[−–—]/g, '-')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    // Robust, pure tokenizer & math evaluator without unsafe syntax errors
+    function evaluateMath(expression) {
+      try {
+        let clean = sanitizeExpression(expression);
+        if (!clean) return 0;
+
+        // Remove trailing operator if user just pressed '=' without second operand
+        clean = clean.replace(/[\+\-\*\/%]+$/, '').trim();
+        if (!clean) return 0;
+
+        // Tokenize numbers and operators
+        // Supports integers, floats, percent (e.g. 50%), and +, -, *, /
+        const tokens = clean.match(/(\d+\.?\d*%?|[\+\-\*\/])/g);
+        if (!tokens || tokens.length === 0) return null;
+
+        // Convert percent numbers to numeric values, e.g. 10% -> 0.1
+        const parsed = [];
+        for (let i = 0; i < tokens.length; i++) {
+          const t = tokens[i];
+          if (t.endsWith('%')) {
+            const numVal = parseFloat(t.slice(0, -1));
+            if (isNaN(numVal)) return null;
+            parsed.push(numVal / 100);
+          } else if (['+', '-', '*', '/'].includes(t)) {
+            parsed.push(t);
+          } else {
+            const numVal = parseFloat(t);
+            if (isNaN(numVal)) return null;
+            parsed.push(numVal);
+          }
+        }
+
+        // Pass 1: Resolve high-precedence operators (* and /)
+        const pass1 = [];
+        let i = 0;
+        while (i < parsed.length) {
+          const token = parsed[i];
+          if (token === '*' || token === '/') {
+            const prev = pass1.pop();
+            const next = parsed[++i];
+            if (prev === undefined || next === undefined) return null;
+            if (token === '*') {
+              pass1.push(prev * next);
+            } else {
+              if (next === 0) return null; // Avoid division by zero
+              pass1.push(prev / next);
+            }
+          } else {
+            pass1.push(token);
+          }
+          i++;
+        }
+
+        // Pass 2: Resolve low-precedence operators (+ and -)
+        if (pass1.length === 0) return 0;
+        let result = typeof pass1[0] === 'number' ? pass1[0] : 0;
+        let j = (typeof pass1[0] === 'number') ? 1 : 0;
+
+        while (j < pass1.length) {
+          const op = pass1[j];
+          const next = pass1[j + 1];
+          if (next === undefined || typeof next !== 'number') break;
+
+          if (op === '+') {
+            result += next;
+          } else if (op === '-') {
+            result -= next;
+          }
+          j += 2;
+        }
+
+        if (isNaN(result) || !isFinite(result)) return null;
+        return result;
+      } catch (e) {
+        console.error('Calculation evaluation error:', e);
+        return null;
+      }
+    }
+
+    function inputNumber(num) {
+      if (state.isNewNumber) {
+        state.currentInput = (num === '00') ? '0' : num;
+        state.isNewNumber = false;
+      } else {
+        if (state.currentInput === '0' && num !== '.') {
+          state.currentInput = num;
+        } else {
+          if (state.currentInput.length < 14) {
+            state.currentInput += num;
+          }
+        }
+      }
+      updateDisplay();
+    }
+
+    function inputDecimal() {
+      if (state.isNewNumber) {
+        state.currentInput = '0.';
+        state.isNewNumber = false;
+      } else if (!state.currentInput.includes('.')) {
+        state.currentInput += '.';
+      }
+      updateDisplay();
+    }
+
+    function inputOperator(op) {
+      if (state.formula) {
+        // 如果前一個步驟也是運算符，且尚未輸入新數字，則直接替換運算符
+        if (state.isNewNumber) {
+          state.formula = state.formula.trim().replace(/[\+\-\×\÷%]+$/, '').trim() + ` ${op}`;
+        } else {
+          // 連續運算先算出中間值
+          calculateIntermediate();
+          state.formula = `${state.currentInput} ${op}`;
+        }
+      } else {
+        state.formula = `${state.currentInput} ${op}`;
+      }
+      state.isNewNumber = true;
+      const exprEl = document.getElementById('calcExpression');
+      if (exprEl) exprEl.textContent = state.formula;
+    }
+
+    function deleteDigit() {
+      if (state.isNewNumber) {
+        state.currentInput = '0';
+      } else {
+        state.currentInput = state.currentInput.slice(0, -1);
+        if (state.currentInput === '' || state.currentInput === '-') {
+          state.currentInput = '0';
+          state.isNewNumber = true;
+        }
+      }
+      updateDisplay();
+    }
+
+    function clearAll() {
+      state.currentInput = '0';
+      state.formula = '';
+      state.isNewNumber = true;
+      const exprEl = document.getElementById('calcExpression');
+      if (exprEl) exprEl.textContent = '0';
+      updateDisplay();
+    }
+
+    function calculateIntermediate() {
+      if (!state.formula) return;
+      const fullExpr = `${state.formula} ${state.currentInput}`;
+      const result = evaluateMath(fullExpr);
+      if (result !== null) {
+        state.currentInput = String(roundSmart(result));
+      }
+    }
+
+    function calculateResult() {
+      // 若沒有算式，直接維持當前數值
+      if (!state.formula) return;
+
+      const fullExpr = `${state.formula} ${state.currentInput}`;
+      const result = evaluateMath(fullExpr);
+
+      if (result !== null) {
+        const resStr = String(roundSmart(result));
+        const exprDisplay = `${fullExpr} =`;
+        
+        const exprEl = document.getElementById('calcExpression');
+        if (exprEl) exprEl.textContent = exprDisplay;
+
+        // 加入歷史算式記憶 (最多10筆)
+        addCalcRecentRecord(fullExpr, resStr, state.baseCurrency);
+
+        state.currentInput = resStr;
+        state.formula = '';
+        state.isNewNumber = true;
+        updateDisplay();
+      } else {
+        showToast('算式格式錯誤');
+      }
+    }
+
+    function roundSmart(val) {
+      return Math.round(val * 10000) / 10000;
+    }
+
+    /* --- STREAMING_CHUNK:Implementing 10-Memory history logic... --- */
+    function initCalcRecents() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY_CALC_RECENTS);
+        if (saved) {
+          state.calcRecents = JSON.parse(saved);
+        }
+      } catch (e) {
+        state.calcRecents = [];
+      }
+      updateCalcHistoryBadge();
+    }
+
+    function addCalcRecentRecord(expression, resultValue, currency) {
+      const now = new Date();
+      const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      
+      const newRecord = {
+        id: Date.now(),
+        expression: expression,
+        result: resultValue,
+        currency: currency,
+        time: timeStr
+      };
+
+      // Unshift to put latest record on top
+      state.calcRecents.unshift(newRecord);
+
+      // Keep maximum 10 records, remove oldest when exceeded
+      if (state.calcRecents.length > 10) {
+        state.calcRecents = state.calcRecents.slice(0, 10);
+      }
+
+      try {
+        localStorage.setItem(STORAGE_KEY_CALC_RECENTS, JSON.stringify(state.calcRecents));
+      } catch (e) {}
+      updateCalcHistoryBadge();
+    }
+
+    function updateCalcHistoryBadge() {
+      const badge = document.getElementById('calcHistoryBadge');
+      if (!badge) return;
+      const len = state.calcRecents.length;
+      if (len > 0) {
+        badge.textContent = len;
+        badge.classList.remove('hidden');
+        badge.classList.add('flex');
+      } else {
+        badge.classList.add('hidden');
+        badge.classList.remove('flex');
+      }
+    }
+
+    function toggleCalcHistoryModal() {
+      const modal = document.getElementById('calcHistoryModal');
+      if (modal.classList.contains('hidden')) {
+        renderCalcHistoryList();
+        modal.classList.remove('hidden');
+      } else {
+        modal.classList.add('hidden');
+      }
+    }
+
+    function renderCalcHistoryList() {
+      const container = document.getElementById('calcHistoryItems');
+      if (state.calcRecents.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-8 text-slate-400 text-xs">
+            <i class="ph ph-clock-counter-clockwise text-3xl mb-1 block"></i>
+            目前尚無歷史算式記錄<br>按下「=」計算後將自動保留最新 10 筆！
+          </div>
+        `;
+        return;
+      }
+
+      const symMap = { 'JPY': '¥', 'TWD': 'NT$', 'USD': '$' };
+      container.innerHTML = state.calcRecents.map(item => `
+        <div onclick="restoreCalcRecord(${item.id})" class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer border border-slate-100 dark:border-slate-800 flex items-center justify-between group">
+          <div class="flex-1 pr-2 overflow-hidden">
+            <div class="text-[11px] text-slate-400 font-mono truncate">${escapeHtml(item.expression)} =</div>
+            <div class="text-sm font-bold font-mono text-slate-800 dark:text-slate-100 flex items-center gap-1">
+              <span class="text-xs text-jpRed font-normal">${symMap[item.currency] || ''}</span>
+              <span>${formatNumber(parseFloat(item.result))}</span>
+            </div>
+          </div>
+          <div class="text-right flex items-center gap-2">
+            <span class="text-[10px] text-slate-400">${item.time}</span>
+            <span class="text-[11px] text-jpRed font-semibold group-hover:underline">帶入</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function restoreCalcRecord(id) {
+      const found = state.calcRecents.find(r => r.id === id);
+      if (!found) return;
+
+      if (found.currency && found.currency !== state.baseCurrency) {
+        const tabToClick = document.querySelector(`.currency-tab[data-currency="${found.currency}"]`);
+        if (tabToClick) tabToClick.click();
+      }
+
+      state.currentInput = found.result;
+      state.formula = '';
+      state.isNewNumber = true;
+      document.getElementById('calcExpression').textContent = `${found.expression} =`;
+      updateDisplay();
+      toggleCalcHistoryModal();
+      showToast(`已帶回歷史金額: ${found.result}`);
+    }
+
+    function clearCalcHistory() {
+      state.calcRecents = [];
+      try {
+        localStorage.removeItem(STORAGE_KEY_CALC_RECENTS);
+      } catch (e) {}
+      updateCalcHistoryBadge();
+      renderCalcHistoryList();
+      showToast('已清空歷史算式記錄');
+    }
+
+    /* --- Travel Shopping Quick Shortcuts --- */
+    function applyTax(factor) {
+      let current = parseFloat(state.currentInput) || 0;
+      let newAmount = roundSmart(current * factor);
+      const prev = state.currentInput;
+      state.currentInput = String(newAmount);
+      state.isNewNumber = true;
+      state.formula = `${current} × ${factor === 1.10 ? '110%' : '免稅'}`;
+      document.getElementById('calcExpression').textContent = state.formula;
+      addCalcRecentRecord(`${prev} × ${factor === 1.10 ? '1.1(含稅)' : '退稅'}`, String(newAmount), state.baseCurrency);
+      updateDisplay();
+    }
+
+    function applyDiscount(factor) {
+      let current = parseFloat(state.currentInput) || 0;
+      let newAmount = roundSmart(current * factor);
+      const prev = state.currentInput;
+      state.currentInput = String(newAmount);
+      state.isNewNumber = true;
+      state.formula = `${current} × ${factor === 0.95 ? '95折' : '9折'}`;
+      document.getElementById('calcExpression').textContent = state.formula;
+      addCalcRecentRecord(`${prev} × ${factor === 0.95 ? '0.95(95折)' : '0.9(9折)'}`, String(newAmount), state.baseCurrency);
+      updateDisplay();
+    }
+
+    /* --- Multi-Currency Live Converter Core --- */
+    function recalculateAllCurrencies() {
+      const num = parseFloat(state.currentInput) || 0;
+      let jpy = 0, twd = 0, usd = 0;
+
+      if (state.baseCurrency === 'JPY') {
+        jpy = num;
+        twd = num * state.rates.jpyToTwd;
+        usd = state.rates.usdToJpy ? (num / state.rates.usdToJpy) : 0;
+      } else if (state.baseCurrency === 'TWD') {
+        twd = num;
+        jpy = state.rates.jpyToTwd ? (num / state.rates.jpyToTwd) : 0;
+        usd = state.rates.usdToJpy ? (jpy / state.rates.usdToJpy) : 0;
+      } else if (state.baseCurrency === 'USD') {
+        usd = num;
+        jpy = num * state.rates.usdToJpy;
+        twd = jpy * state.rates.jpyToTwd;
+      }
+
+      const valJPYEl = document.getElementById('valJPY');
+      const valTWDEl = document.getElementById('valTWD');
+      const valUSDEl = document.getElementById('valUSD');
+
+      if (valJPYEl) valJPYEl.textContent = `¥ ${formatNumber(Math.round(jpy))}`;
+      if (valTWDEl) valTWDEl.textContent = `NT$ ${formatNumber(Math.round(twd))}`;
+      if (valUSDEl) valUSDEl.textContent = `$ ${formatNumber(roundSmart(usd))}`;
+    }
+
+    function formatNumber(val) {
+      if (isNaN(val)) return '0';
+      return val.toLocaleString('en-US');
+    }
+
+    function updateDisplay() {
+      const main = document.getElementById('mainDisplay');
+      if (main) main.textContent = state.currentInput;
+      recalculateAllCurrencies();
+    }
+
+    /* --- STREAMING_CHUNK:Implementing memory functions and bookkeeping history... --- */
+    function initMemory() {
+      try {
+        const mem = localStorage.getItem(STORAGE_KEY_MEMORY);
+        if (mem) state.memoryValue = parseFloat(mem) || 0;
+      } catch (e) {}
+      updateMemoryIndicator();
+    }
+
+    function updateMemoryIndicator() {
+      const ind = document.getElementById('memoryIndicator');
+      if (!ind) return;
+      if (state.memoryValue !== 0) {
+        ind.classList.remove('hidden');
+      } else {
+        ind.classList.add('hidden');
+      }
+      try {
+        localStorage.setItem(STORAGE_KEY_MEMORY, state.memoryValue.toString());
+      } catch (e) {}
+    }
+
+    function memClear() {
+      state.memoryValue = 0;
+      updateMemoryIndicator();
+      showToast('記憶已清除 (MC)');
+    }
+
+    function memRecall() {
+      if (state.memoryValue === 0) {
+        showToast('記憶為 0');
+        return;
+      }
+      state.currentInput = String(state.memoryValue);
+      state.isNewNumber = true;
+      updateDisplay();
+      showToast(`已讀取記憶: ${state.memoryValue}`);
+    }
+
+    function memAdd() {
+      const cur = parseFloat(state.currentInput) || 0;
+      state.memoryValue += cur;
+      updateMemoryIndicator();
+      showToast(`記憶累加 M+: +${cur}`);
+      state.isNewNumber = true;
+    }
+
+    function memSubtract() {
+      const cur = parseFloat(state.currentInput) || 0;
+      state.memoryValue -= cur;
+      updateMemoryIndicator();
+      showToast(`記憶相減 M-: -${cur}`);
+      state.isNewNumber = true;
+    }
+
+    // Expense Recording System
+    function toggleRecordModal() {
+      const modal = document.getElementById('recordModal');
+      if (modal.classList.contains('hidden')) {
+        const num = parseFloat(state.currentInput) || 0;
+        let jpy = 0, twd = 0;
+        if (state.baseCurrency === 'JPY') {
+          jpy = num;
+          twd = num * state.rates.jpyToTwd;
+        } else if (state.baseCurrency === 'TWD') {
+          twd = num;
+          jpy = num / state.rates.jpyToTwd;
+        }
+        document.getElementById('modalRecordAmountJPY').textContent = `¥ ${formatNumber(Math.round(jpy))}`;
+        document.getElementById('modalRecordAmountTWD').textContent = `NT$ ${formatNumber(Math.round(twd))}`;
+        document.getElementById('recordNoteInput').value = '';
+        modal.classList.remove('hidden');
+      } else {
+        modal.classList.add('hidden');
+      }
+    }
+
+    function selectCategory(cat) {
+      state.selectedCategory = cat;
+      document.querySelectorAll('#categoryTags .cat-btn').forEach(btn => {
+        if (btn.textContent.includes(cat)) {
+          btn.classList.add('bg-jpRed', 'text-white');
+        } else {
+          btn.classList.remove('bg-jpRed', 'text-white');
+        }
+      });
+    }
+
+    function confirmSaveRecord() {
+      const num = parseFloat(state.currentInput) || 0;
+      if (num <= 0) {
+        showToast('請輸入大於 0 的金額');
+        return;
+      }
+      let jpy = (state.baseCurrency === 'JPY') ? num : (num / state.rates.jpyToTwd);
+      let twd = (state.baseCurrency === 'TWD') ? num : (jpy * state.rates.jpyToTwd);
+
+      const note = document.getElementById('recordNoteInput').value.trim();
+      const record = {
+        id: Date.now(),
+        category: state.selectedCategory,
+        note: note || state.selectedCategory,
+        jpy: Math.round(jpy),
+        twd: Math.round(twd),
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+
+      state.history.unshift(record);
+      saveHistory();
+      toggleRecordModal();
+      showToast('已記錄此筆消費！');
+    }
+
+    function saveHistory() {
+      try {
+        localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(state.history));
+      } catch (e) {}
+      renderHistory();
+    }
+
+    function loadHistory() {
+      try {
+        const hist = localStorage.getItem(STORAGE_KEY_HISTORY);
+        if (hist) state.history = JSON.parse(hist);
+      } catch (e) {
+        state.history = [];
+      }
+      renderHistory();
+    }
+
+    function renderHistory() {
+      const container = document.getElementById('historyListContainer');
+      const countEl = document.getElementById('historyCount');
+      const totalTwdEl = document.getElementById('totalSpentTWD');
+      const totalJpyEl = document.getElementById('totalSpentJPY');
+
+      countEl.textContent = state.history.length;
+      let sumJpy = 0, sumTwd = 0;
+
+      if (state.history.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-12 text-slate-400 text-xs">
+            <i class="ph ph-receipt text-3xl mb-1 block"></i>
+            目前尚未有消費記錄<br>計算完畢後點擊「記帳」即可收藏明細
+          </div>
+        `;
+      } else {
+        container.innerHTML = state.history.map(item => {
+          sumJpy += item.jpy;
+          sumTwd += item.twd;
+          return `
+            <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between text-xs border border-slate-100 dark:border-slate-800">
+              <div class="flex items-center gap-2">
+                <span class="p-1.5 rounded-lg bg-jpRed/10 text-jpRed font-bold text-sm">
+                  ${item.category === '藥妝' ? '💊' : item.category === '美食' ? '🍜' : item.category === '交通' ? '🚅' : '🛍️'}
+                </span>
+                <div>
+                  <div class="font-semibold text-slate-800 dark:text-slate-200">${escapeHtml(item.note)}</div>
+                  <div class="text-[10px] text-slate-400">${item.time}</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="text-right">
+                  <div class="font-bold font-mono">¥${formatNumber(item.jpy)}</div>
+                  <div class="text-[10px] text-emerald-500 font-mono">NT$${formatNumber(item.twd)}</div>
+                </div>
+                <button onclick="deleteHistoryItem(${item.id})" class="text-slate-400 hover:text-rose-500 p-1">
+                  <i class="ph ph-trash"></i>
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      totalTwdEl.textContent = `NT$ ${formatNumber(sumTwd)}`;
+      totalJpyEl.textContent = `¥${formatNumber(sumJpy)}`;
+    }
+
+    function deleteHistoryItem(id) {
+      state.history = state.history.filter(item => item.id !== id);
+      saveHistory();
+    }
+
+    function clearHistoryRecords() {
+      state.history = [];
+      saveHistory();
+      showToast('已清除全部消費記錄');
+    }
+
+    function copyAllRecordsSummary() {
+      if (state.history.length === 0) {
+        showToast('無記錄可複製');
+        return;
+      }
+      let summary = `【日本旅遊消費清單】\n`;
+      let totalJ = 0, totalT = 0;
+      state.history.forEach((h, i) => {
+        summary += `${i+1}. [${h.category}] ${h.note}: ¥${h.jpy} (約 NT$${h.twd})\n`;
+        totalJ += h.jpy;
+        totalT += h.twd;
+      });
+      summary += `-------------------\n總計：¥${totalJ} (約 NT$${totalT})`;
+      copyTextToClipboard(summary);
+      showToast('已複製清單文字摘要！');
+    }
+
+    function toggleHistoryDrawer() {
+      const drawer = document.getElementById('historyDrawer');
+      drawer.classList.toggle('translate-x-full');
+    }
+
+    /* --- Utilities & PWA Setup --- */
+    function copyValue(type) {
+      let val = '';
+      if (type === 'JPY') val = document.getElementById('valJPY').textContent;
+      if (type === 'TWD') val = document.getElementById('valTWD').textContent;
+      if (type === 'USD') val = document.getElementById('valUSD').textContent;
+      copyTextToClipboard(val);
+      showToast(`已複製 ${type} 金額：${val}`);
+    }
+
+    function copyTextToClipboard(text) {
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      textArea.style.position = "fixed";
+      textArea.style.left = "-999999px";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      try {
+        document.execCommand('copy');
+      } catch (err) {}
+      document.body.removeChild(textArea);
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toastMsg').textContent = msg;
+      toast.classList.remove('opacity-0');
+      toast.classList.add('opacity-100');
+      setTimeout(() => {
+        toast.classList.remove('opacity-100');
+        toast.classList.add('opacity-0');
+      }, 2000);
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>'"]/g, 
+        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag));
+    }
+
+    /* --- PWA Mobile Desktop Installation --- */
+    function initPWA() {
+      const manifest = {
+        name: "日本旅遊萬用計算機",
+        short_name: "日旅計算機",
+        description: "可離線日本旅遊三幣換算與消費萬用計算機",
+        start_url: window.location.href,
+        display: "standalone",
+        background_color: "#12161A",
+        theme_color: "#12161A",
+        icons: [
+          {
+            src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23E63946'/%3E%3Ctext x='50' y='65' font-size='48' text-anchor='middle' fill='%23FFFFFF' font-family='sans-serif' font-weight='bold'%3E%C2%A5%3C/text%3E%3C/svg%3E",
+            sizes: "192x192",
+            type: "image/svg+xml"
+          },
+          {
+            src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23E63946'/%3E%3Ctext x='50' y='65' font-size='48' text-anchor='middle' fill='%23FFFFFF' font-family='sans-serif' font-weight='bold'%3E%C2%A5%3C/text%3E%3C/svg%3E",
+            sizes: "512x512",
+            type: "image/svg+xml"
+          }
+        ]
+      };
+      const stringManifest = JSON.stringify(manifest);
+      const blob = new Blob([stringManifest], { type: 'application/json' });
+      const manifestURL = URL.createObjectURL(blob);
+      document.getElementById('pwaManifest').setAttribute('href', manifestURL);
+
+      if ('serviceWorker' in navigator) {
+        const swCode = `
+          const CACHE_NAME = 'jptravel-calc-v3';
+          self.addEventListener('install', (e) => {
+            self.skipWaiting();
+          });
+          self.addEventListener('activate', (e) => {
+            e.waitUntil(clients.claim());
+          });
+          self.addEventListener('fetch', (e) => {
+            e.respondWith(
+              fetch(e.request).catch(() => caches.match(e.request))
+            );
+          });
+        `;
+        const swBlob = new Blob([swCode], { type: 'application/javascript' });
+        const swUrl = URL.createObjectURL(swBlob);
+        navigator.serviceWorker.register(swUrl).catch(() => {});
+      }
+
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        const promptBtn = document.getElementById('pwaPromptBtn');
+        if (promptBtn) promptBtn.classList.remove('hidden');
+      });
+    }
+
+    function openInstallGuideModal() {
+      document.getElementById('installGuideModal').classList.remove('hidden');
+    }
+
+    function closeInstallGuideModal() {
+      document.getElementById('installGuideModal').classList.add('hidden');
+    }
+
+    function triggerPwaPrompt() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(() => {
+          deferredPrompt = null;
+          closeInstallGuideModal();
+        });
+      }
+    }
+
+    function closeRateModal() {
+      document.getElementById('rateModal').classList.add('hidden');
+    }
+
+    function saveCustomRates() {
+      const jpyTwd = parseFloat(document.getElementById('rateJpyTwdInput').value);
+      const usdJpy = parseFloat(document.getElementById('rateUsdJpyInput').value);
+      if (jpyTwd > 0 && usdJpy > 0) {
+        state.rates.jpyToTwd = jpyTwd;
+        state.rates.usdToJpy = usdJpy;
+        state.rates.lastUpdated = '手動自訂';
+        saveRatesToStorage();
+        closeRateModal();
+        showToast('已保存自訂匯率！');
+      } else {
+        showToast('請輸入有效數值');
+      }
+    }
+
+    function resetDefaultRates() {
+      state.rates = { ...DEFAULT_RATES };
+      saveRatesToStorage();
+      closeRateModal();
+      showToast('已重設為預設匯率');
+    }
+
+    // Theme Management
+    function initTheme() {
+      const savedTheme = localStorage.getItem(STORAGE_KEY_THEME);
+      const isDark = savedTheme ? savedTheme === 'dark' : true;
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    }
+
+    /* --- STREAMING_CHUNK:Attaching event listeners on load... --- */
+    window.addEventListener('DOMContentLoaded', () => {
+      initTheme();
+      initRates();
+      initMemory();
+      initCalcRecents();
+      loadHistory();
+      updateDisplay();
+      initPWA();
+
+      // Theme button
+      document.getElementById('themeToggleBtn').addEventListener('click', () => {
+        const isDark = document.documentElement.classList.toggle('dark');
+        localStorage.setItem(STORAGE_KEY_THEME, isDark ? 'dark' : 'light');
+      });
+
+      // Currency Base Tabs
+      document.querySelectorAll('.currency-tab').forEach(tab => {
+        tab.addEventListener('click', (e) => {
+          document.querySelectorAll('.currency-tab').forEach(t => {
+            t.classList.remove('text-white', 'bg-jpRed', 'shadow-sm');
+            t.classList.add('text-slate-500', 'dark:text-slate-400');
+          });
+          const selected = e.target.getAttribute('data-currency');
+          e.target.classList.add('text-white', 'bg-jpRed', 'shadow-sm');
+          e.target.classList.remove('text-slate-500', 'dark:text-slate-400');
+          
+          state.baseCurrency = selected;
+          const symbolMap = { 'JPY': '¥', 'TWD': 'NT$', 'USD': '$' };
+          document.getElementById('activeCurrencySymbol').textContent = symbolMap[selected] || '¥';
+          recalculateAllCurrencies();
+        });
+      });
+
+      // Rate Buttons
+      document.getElementById('refreshRateBtn').addEventListener('click', fetchLiveRates);
+      document.getElementById('editRateBtn').addEventListener('click', () => {
+        document.getElementById('rateModal').classList.remove('hidden');
+      });
+
+      // Network Status Monitor
+      window.addEventListener('online', () => {
+        const badge = document.getElementById('offlineBadge');
+        if (badge) {
+          badge.textContent = '已連線';
+          badge.className = 'text-[10px] px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-500 font-medium border border-blue-500/20';
+        }
+      });
+      window.addEventListener('offline', () => {
+        const badge = document.getElementById('offlineBadge');
+        if (badge) {
+          badge.textContent = '離線可用';
+          badge.className = 'text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 font-medium border border-emerald-500/20';
+        }
+      });
+    });
+
+    // Keyboard support for desktop
+    window.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT') return;
+      if (e.key >= '0' && e.key <= '9') inputNumber(e.key);
+      else if (e.key === '.') inputDecimal();
+      else if (e.key === '+') inputOperator('+');
+      else if (e.key === '-') inputOperator('-');
+      else if (e.key === '*') inputOperator('×');
+      else if (e.key === '/') { e.preventDefault(); inputOperator('÷'); }
+      else if (e.key === 'Enter' || e.key === '=') { e.preventDefault(); calculateResult(); }
+      else if (e.key === 'Backspace') deleteDigit();
+      else if (e.key === 'Escape') clearAll();
+    });
+  </script>
+</body>
+</html>

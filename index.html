@@ -125,26 +125,26 @@
         </div>
       </div>
 
-      <!-- Live Converted Result Rows (JPY, TWD, USD simultaneously) -->
-      <div class="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/80 text-center">
-        <!-- JPY -->
-        <div class="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex flex-col cursor-pointer active:opacity-75" onclick="copyValue('JPY')">
+      <!-- Live Converted Result Rows (Dynamic 2-Column: Shows only the other 2 currencies) -->
+      <div id="convertedCardsGrid" class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/80 text-center">
+        <!-- JPY (Hidden when base currency is JPY) -->
+        <div id="cardJPY" class="hidden p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex flex-col cursor-pointer active:opacity-75 transition-all" onclick="copyValue('JPY')">
           <div class="flex items-center justify-center gap-1 text-[11px] text-slate-400 font-semibold">
             <span>🇯🇵 日幣 JPY</span>
           </div>
           <span id="valJPY" class="text-base sm:text-lg font-bold font-mono text-slate-800 dark:text-slate-200 mt-0.5 truncate">¥ 0</span>
         </div>
 
-        <!-- TWD -->
-        <div class="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex flex-col cursor-pointer active:opacity-75" onclick="copyValue('TWD')">
+        <!-- TWD (Hidden when base currency is TWD) -->
+        <div id="cardTWD" class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex flex-col cursor-pointer active:opacity-75 transition-all" onclick="copyValue('TWD')">
           <div class="flex items-center justify-center gap-1 text-[11px] text-slate-400 font-semibold">
             <span>🇹🇼 台幣 TWD</span>
           </div>
           <span id="valTWD" class="text-base sm:text-lg font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-0.5 truncate">NT$ 0</span>
         </div>
 
-        <!-- USD -->
-        <div class="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex flex-col cursor-pointer active:opacity-75" onclick="copyValue('USD')">
+        <!-- USD (Hidden when base currency is USD) -->
+        <div id="cardUSD" class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex flex-col cursor-pointer active:opacity-75 transition-all" onclick="copyValue('USD')">
           <div class="flex items-center justify-center gap-1 text-[11px] text-slate-400 font-semibold">
             <span>🇺🇸 美金 USD</span>
           </div>
@@ -891,6 +891,27 @@
       return val.toLocaleString('en-US');
     }
 
+    function updateConvertedCardsVisibility() {
+      const cardJPY = document.getElementById('cardJPY');
+      const cardTWD = document.getElementById('cardTWD');
+      const cardUSD = document.getElementById('cardUSD');
+      if (!cardJPY || !cardTWD || !cardUSD) return;
+
+      if (state.baseCurrency === 'JPY') {
+        cardJPY.classList.add('hidden');
+        cardTWD.classList.remove('hidden');
+        cardUSD.classList.remove('hidden');
+      } else if (state.baseCurrency === 'TWD') {
+        cardTWD.classList.add('hidden');
+        cardJPY.classList.remove('hidden');
+        cardUSD.classList.remove('hidden');
+      } else if (state.baseCurrency === 'USD') {
+        cardUSD.classList.add('hidden');
+        cardJPY.classList.remove('hidden');
+        cardTWD.classList.remove('hidden');
+      }
+    }
+
     function updateDisplay() {
       const main = document.getElementById('mainDisplay');
       if (main) main.textContent = state.currentInput;
@@ -1295,6 +1316,7 @@
       initMemory();
       initCalcRecents();
       loadHistory();
+      updateConvertedCardsVisibility();
       updateDisplay();
       initPWA();
 
@@ -1316,6 +1338,7 @@
           state.baseCurrency = selected;
           const symbolMap = { 'JPY': '¥', 'TWD': 'NT$', 'USD': '$' };
           document.getElementById('activeCurrencySymbol').textContent = symbolMap[selected] || '¥';
+          updateConvertedCardsVisibility();
           recalculateAllCurrencies();
         });
       });
